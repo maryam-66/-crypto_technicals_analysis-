@@ -7,44 +7,44 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from fpdf import FPDF
 import os
+import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from nltk.sentiment.vader import VaderConstants
-from nltk.sentiment.util import register_punctuations
 
-# لود کردن لغت‌نامه vader از فایل txt سفارشی
-class CustomSentimentIntensityAnalyzer(SentimentIntensityAnalyzer):
-    def __init__(self, lexicon_file_path=None):
-        if lexicon_file_path is None:
-            raise ValueError("مسیر فایل vader_lexicon.txt مشخص نشده است.")
 
-        # لود کردن لغت‌نامه از فایل
-        with open(lexicon_file_path, encoding='utf-8') as f:
-            self.lexicon = self.make_lex_dict(f)
-        
-        self.constants = VaderConstants()
-        self.constants.PUNCTUATION_LIST = register_punctuations()
-        self.constants.BOOSTER_DICT = self.constants.BOOSTER_DICT
-        self.constants.NEGATE = self.constants.NEGATE
-        self.constants.SPECIAL_CASE_IDIOMS = self.constants.SPECIAL_CASE_IDIOMS
-        self.constants.LEXICON = self.lexicon
+# تابع ساخت دیکشنری لغت‌نامه از فایل vader_lexicon.txt
+def load_custom_lexicon(lexicon_path):
+    lexicon = {}
+    with open(lexicon_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            if not line.strip() or line.startswith('#'):
+                continue
+            word, measure = line.strip().split('\t')[0:2]
+            lexicon[word] = float(measure)
+    return lexicon
 
-# مسیر فایل vader_lexicon.txt
-lexicon_path = os.path.join(os.path.dirname(__file__), "nltk_data", "sentiment", "vader_lexicon.txt")
 
-# ساخت شی تحلیلگر با فایل شخصی‌سازی‌شده
-sia = CustomSentimentIntensityAnalyzer(lexicon_file_path=lexicon_path)
+# آدرس فایل vader_lexicon.txt (باید در پروژه موجود باشد)
+custom_lexicon_path = os.path.join(os.path.dirname(__file__), 'nltk_data', 'sentiment', 'vader_lexicon.txt')
+
+# بارگذاری لغت‌نامه سفارشی
+custom_lexicon = load_custom_lexicon(custom_lexicon_path)
+
+# ساخت تحلیلگر احساسات با لغت‌نامه دلخواه
+sia = SentimentIntensityAnalyzer()
+sia.lexicon.update(custom_lexicon)
+
 
 # تابع تحلیل احساسات
 def analyze_sentiment(text):
     """
-    دریافت یک جمله و برگرداندن امتیاز احساسی آن (بین -1 تا 1)
+    دریافت یک جمله و بازگرداندن امتیاز احساسی آن بین -1 تا 1.
     """
     if not isinstance(text, str) or not text.strip():
         return 0.0
+    score = sia.polarity_scores(text)["compound"]
+    return score
 
-    scores = sia.polarity_scores(text)
-    return scores["compound"]
 
-# تست سریع
+# --- تست در صورت اجرای مستقیم ---
 if __name__ == "__main__":
-    print(analyze_sentiment("This is absolutely fantastic!"))
+    print(analyze_sentiment("I really love this amazing tool!"))
