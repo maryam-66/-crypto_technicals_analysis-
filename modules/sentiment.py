@@ -1,18 +1,29 @@
-import requests
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from io import BytesIO
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.sentiment.util import mark_negation
+from nltk import tokenize
 import arabic_reshaper
 from bidi.algorithm import get_display
 from fpdf import FPDF
 import streamlit as st
-import os
+import requests
+from io import BytesIO
+
+# مسیر فایل vader_lexicon.txt
+LEXICON_PATH = "./nltk_data/sentiment/vader_lexicon.txt"
+
+# بررسی وجود فایل
+if not os.path.exists(LEXICON_PATH):
+    raise FileNotFoundError(f"❌ فایل vader_lexicon.txt در مسیر مشخص‌شده پیدا نشد:\n{LEXICON_PATH}")
+
+# بارگذاری تحلیل‌گر احساسات با فایل لوکال
+analyzer = SentimentIntensityAnalyzer(lexicon_file=LEXICON_PATH)
+
 
 def run_sentiment_analysis(symbols, start_date=None, end_date=None):
-    analyzer = SentimentIntensityAnalyzer()
     newsapi_key = "1fbbb3b298474644b2187f4a534484d4"
-
     all_data = []
 
     for symbol in symbols:
@@ -72,7 +83,7 @@ def run_sentiment_analysis(symbols, start_date=None, end_date=None):
     pdf.add_font("DejaVu", "", fname="DejaVuSans.ttf", uni=True)
     pdf.add_font("DejaVu", "B", fname="DejaVuSans-Bold.ttf", uni=True)
     pdf.set_font("DejaVu", size=12)
-    title = get_display(arabic_reshaper.reshape("Financial News Sentiment Analysis"))
+    title = get_display(arabic_reshaper.reshape("تحلیل احساسات اخبار اقتصادی"))
     pdf.cell(200, 10, txt=title, ln=True, align="C")
 
     for symbol, group in df.groupby("symbol"):
@@ -91,7 +102,7 @@ def run_sentiment_analysis(symbols, start_date=None, end_date=None):
         # نمودار احساسات
         fig, ax = plt.subplots()
         sentiments = group[['pos', 'neg', 'neu']].mean()
-        ax.pie(sentiments, labels=['Positive', 'Negative', 'Neuter'], autopct='%1.1f%%')
+        ax.pie(sentiments, labels=['مثبت', 'منفی', 'خنثی'], autopct='%1.1f%%')
         ax.axis('equal')
         chart_buf = BytesIO()
         plt.savefig(chart_buf, format='png')
