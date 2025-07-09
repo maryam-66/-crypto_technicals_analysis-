@@ -7,71 +7,33 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from fpdf import FPDF
 import os
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
 
-# ماژول تحلیل احساسات (فایل مجزا)
-from modules import sentiment
+# اضافه کردن مسیر دستی برای vader_lexicon
+def setup_vader_lexicon():
+    custom_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../nltk_data"))
+    if custom_path not in nltk.data.path:
+        nltk.data.path.append(custom_path)
 
-# مسیر فونت‌ها
-FONT_BOLD = "DejaVuSans-Bold.ttf"
-FONT_REGULAR = "DejaVuSans.ttf"
+    try:
+        SentimentIntensityAnalyzer()
+    except LookupError:
+        raise RuntimeError("❌ خطا: فایل vader_lexicon یافت نشد! لطفاً مطمئن شوید فایل vader_lexicon.txt در مسیر زیر قرار دارد:\n" +
+                           os.path.join(custom_path, "sentiment/vader_lexicon.txt"))
 
-# 📥 استخراج اخبار (شبیه‌سازی برای تست)
-def extract_sample_headlines():
-    return [
-        "افزایش نرخ بهره توسط فدرال رزرو",
-        "کاهش تورم در آمریکا در ماه گذشته",
-        "تنش‌های ژئوپلیتیکی در خاورمیانه",
-    ]
+# راه‌اندازی Vader
+setup_vader_lexicon()
+sia = SentimentIntensityAnalyzer()
 
-# 📄 تولید گزارش PDF
-def generate_pdf(results, filename="sentiment_report.pdf"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.add_font("DejaVu", "", FONT_REGULAR, uni=True)
-    pdf.add_font("DejaVu", "B", FONT_BOLD, uni=True)
-    pdf.set_font("DejaVu", "B", 16)
-    pdf.cell(200, 10, txt=get_display(arabic_reshaper.reshape("گزارش تحلیل احساسات")), ln=True, align='C')
+# تابع تحلیل احساسات
+def analyze_sentiment(text):
+    """
+    دریافت یک جمله (string) و برگرداندن امتیاز احساسی آن.
+    خروجی بین -1 (منفی) تا 1 (مثبت) است.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return 0.0
 
-    pdf.set_font("DejaVu", "", 12)
-    for title, score in results:
-        reshaped = arabic_reshaper.reshape(title)
-        bidi_title = get_display(reshaped)
-        pdf.multi_cell(0, 10, txt=f"{bidi_title}\nامتیاز احساسات: {score}\n")
-
-    pdf.output(filename)
-
-# 🎯 رابط کاربری Streamlit
-def main():
-    st.set_page_config(page_title="تحلیل احساسات اخبار اقتصادی", layout="centered")
-    st.title("🧠 تحلیل احساسات اخبار اقتصادی")
-
-    st.markdown("این ابزار با استفاده از NLP و مدل VADER احساسات اخبار اقتصادی را بررسی می‌کند.")
-
-    if st.button("🔍 تحلیل احساسات اخبار"):
-        with st.spinner("در حال بارگذاری اخبار..."):
-            headlines = extract_sample_headlines()
-
-        results = []
-        for title in headlines:
-            score = sentiment.analyze_sentiment(title)
-            results.append((title, score))
-
-        st.success("✅ تحلیل انجام شد!")
-        st.write("### نتایج:")
-        for title, score in results:
-            st.write(f"📰 {title}")
-            st.write(f"🔸 امتیاز احساسات: `{score}`")
-            st.markdown("---")
-
-        generate_pdf(results)
-        with open("sentiment_report.pdf", "rb") as pdf_file:
-            st.download_button(
-                label="📄 دانلود گزارش PDF",
-                data=pdf_file,
-                file_name="sentiment_report.pdf",
-                mime="application/pdf"
-            )
-
-if __name__ == "__main__":
-    main()
-
+    scores = sia.polarity_scores(text)
+    return scores["compound"]
