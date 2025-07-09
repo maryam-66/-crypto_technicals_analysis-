@@ -10,20 +10,13 @@ import os
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-# اضافه کردن مسیر دستی برای vader_lexicon
-def setup_vader_lexicon():
-    custom_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../nltk_data"))
-    if custom_path not in nltk.data.path:
-        nltk.data.path.append(custom_path)
+# بررسی وجود vader_lexicon و دانلود در صورت نیاز
+try:
+    nltk.data.find('sentiment/vader_lexicon')
+except LookupError:
+    nltk.download('vader_lexicon')
 
-    try:
-        SentimentIntensityAnalyzer()
-    except LookupError:
-        raise RuntimeError("❌ خطا: فایل vader_lexicon یافت نشد! لطفاً مطمئن شوید فایل vader_lexicon.txt در مسیر زیر قرار دارد:\n" +
-                           os.path.join(custom_path, "sentiment/vader_lexicon.txt"))
-
-# راه‌اندازی Vader
-setup_vader_lexicon()
+# ساخت شیء تحلیلگر احساسات
 sia = SentimentIntensityAnalyzer()
 
 # تابع تحلیل احساسات
@@ -37,3 +30,10 @@ def analyze_sentiment(text):
 
     scores = sia.polarity_scores(text)
     return scores["compound"]
+
+
+# --- این قسمت را اگر در پروژه اصلی لازم داری استفاده کن ---
+if __name__ == "__main__":
+    sample_text = "I love this product! It's amazing."
+    score = analyze_sentiment(sample_text)
+    print(f"Sentiment score: {score}")
